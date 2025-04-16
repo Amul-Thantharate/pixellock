@@ -800,7 +800,7 @@ func main() {
 		Usage:   "Show help",
 	}
 	app := &cli.App{
-		Name:    "image-encryption",
+		Name:    "pixellock",
 		Usage:   "Encrypt, decrypt, and hide messages within images using AES-256 GCM and steganography",
 		Version: Version, //Set the version from the constant
 		Authors: []*cli.Author{
