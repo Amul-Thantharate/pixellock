@@ -31,11 +31,12 @@ const (
 	Author   = "Amul Thantharate" // Tool Author
 	KeySize  = 32                 // AES-256 key size (32 bytes)
 	AsciiArt = `
-   __    _   _ ____  ____
-  / /   / \ | |  _ \|  _ \
- / /   / _ \| | |_) | |_) |
-/ /___/ ___ \ |  __/|  __/
-\____/_/   \_\_|   |_|
+       _          _ _            _    
+ _ __ (_)_  _____| | | ___   ___| | __
+| '_ \| \ \/ / _ \ | |/ _ \ / __| |/ /
+| |_) | |>  <  __/ | | (_) | (__|   < 
+| .__/|_/_/\_\___|_|_|\___/ \___|_|\_\
+|_|   
  Image Encryption Tool
 `
 	EncryptedExtension = ".enc"
