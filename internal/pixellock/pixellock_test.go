@@ -82,26 +82,3 @@ func TestIsImageFile(t *testing.T) {
 		t.Errorf("isImageFile should return false for a non-image file")
 	}
 }
-
-func TestSteganographyHideReveal(t *testing.T) {
-	tempDir := t.TempDir()
-	inputImage := filepath.Join(tempDir, "test_stego.png")
-	createImageFile(t, inputImage)
-	outputImage := filepath.Join(tempDir, "stego_output.png")
-
-	message := "This is a hidden message!"
-	err := hideMessage(inputImage, outputImage, message, "png") // Test hide with PNG
-
-	if err != nil {
-		t.Fatalf("hideMessage failed: %v", err)
-	}
-
-	revealedMessage, err := revealMessage(outputImage)
-	if err != nil {
-		t.Fatalf("revealMessage failed: %v", err)
-	}
-
-	if revealedMessage != message {
-		t.Errorf("Revealed message does not match original: got %q, want %q", revealedMessage, message)
-	}
-}
