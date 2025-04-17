@@ -1,64 +1,120 @@
-# Go executable name
-APP_NAME := pixellock
-VERSION := 1.0.0
+# Variables
+BINARY_NAME=pixellock
+BINARY_DIR=bin
+DOCKER_IMAGE_NAME=pixellock
+GO_FILES=$(wildcard *.go)
+VERSION=$(shell git describe --tags --always --dirty)
+LDFLAGS=-ldflags "-X main.Version=${VERSION}"
 
-# Source files and directories
-SRCS := main.go internal/pixellock/pixellock.go
-PKG_LIST := $(shell go list ./... | grep -v /vendor/)
+# Colors for terminal output
+GREEN=\033[0;32m
+NC=\033[0m # No Color
 
-# Output directory
-OUTPUT_DIR := bin
-DIST_DIR := dist
+.PHONY: all build clean test coverage docker-build docker-run fmt lint help install-deps run install release dist
 
-# Go compiler flags
-GOFLAGS := -v
-LDFLAGS := -ldflags "-X main.Version=${VERSION}"
-
-.DEFAULT_GOAL := help
+# Default target
+all: clean build test
 
 # Build the application
 build:
-	@mkdir -p $(OUTPUT_DIR)
-	go build $(GOFLAGS) $(LDFLAGS) -o $(OUTPUT_DIR)/$(APP_NAME) $(SRCS)
-	@echo "Build completed successfully!"
+	@printf "$(GREEN)Building $(BINARY_NAME)...$(NC)\n"
+	@mkdir -p $(BINARY_DIR)
+	@go build $(LDFLAGS) -o $(BINARY_DIR)/$(BINARY_NAME)
+	@printf "$(GREEN)Done! Binary created at $(BINARY_DIR)/$(BINARY_NAME)$(NC)\n"
 
-# Run the application
-run: build
-	@$(OUTPUT_DIR)/$(APP_NAME) $(ARGS)
+# Clean build artifacts
+clean:
+	@printf "$(GREEN)Cleaning build artifacts...$(NC)\n"
+	@rm -rf $(BINARY_DIR)
+	@go clean
+	@printf "$(GREEN)Cleaned!$(NC)\n"
 
-# Run tests with coverage
+# Run all tests
 test:
-	@mkdir -p $(OUTPUT_DIR)
-	go test -v -race -coverprofile=$(OUTPUT_DIR)/coverage.out $(PKG_LIST)
-	go tool cover -html=$(OUTPUT_DIR)/coverage.out -o $(OUTPUT_DIR)/coverage.html
+	@printf "$(GREEN)Running tests...$(NC)\n"
+	@go test -v ./... -cover
 
-# Run
-# Install dependencies
-install-deps:
-	go mod tidy
-	go mod vendor
+# Generate test coverage report
+coverage:
+	@printf "$(GREEN)Generating coverage report...$(NC)\n"
+	@go test ./... -coverprofile=coverage.out
+	@go tool cover -html=coverage.out
+	@rm coverage.out
 
 # Build Docker image
 docker-build:
-	docker build -t $(APP_NAME) .
+	@printf "$(GREEN)Building Docker image...$(NC)\n"
+	@docker build -t $(DOCKER_IMAGE_NAME) .
 
-# Run Docker image
+# Run in Docker container
 docker-run: docker-build
-	docker run -it $(APP_NAME) $(DOCKER_ARGS)
+	@printf "$(GREEN)Running in Docker container...$(NC)\n"
+	@docker run -it --rm $(DOCKER_IMAGE_NAME)
 
-# Show help message
+# Format code
+fmt:
+	@printf "$(GREEN)Formatting code...$(NC)\n"
+	@go fmt ./...
+	@printf "$(GREEN)Code formatted!$(NC)\n"
+
+# Run linter
+lint:
+	@printf "$(GREEN)Running linter...$(NC)\n"
+	@if command -v golangci-lint >/dev/null; then \
+		golangci-lint run ./...; \
+	else \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+		golangci-lint run ./...; \
+	fi
+
+# Install project dependencies
+install-deps:
+	@printf "$(GREEN)Installing dependencies...$(NC)\n"
+	@go mod download
+	@printf "$(GREEN)Dependencies installed!$(NC)\n"
+
+# Run the application
+run: build
+	@printf "$(GREEN)Running $(BINARY_NAME)...$(NC)\n"
+	@./$(BINARY_DIR)/$(BINARY_NAME)
+
+# Install binary to GOPATH/bin
+install: build
+	@printf "$(GREEN)Installing $(BINARY_NAME)...$(NC)\n"
+	@go install ./...
+
+# Release build (optimized)
+release: clean
+	@printf "$(GREEN)Building release version...$(NC)\n"
+	@mkdir -p $(BINARY_DIR)
+	@go build -ldflags="-s -w $(LDFLAGS)" -o $(BINARY_DIR)/$(BINARY_NAME)
+	@printf "$(GREEN)Release build created at $(BINARY_DIR)/$(BINARY_NAME)$(NC)\n"
+
+# Create distribution packages
+dist: release
+	@printf "$(GREEN)Creating distribution packages...$(NC)\n"
+	@mkdir -p dist
+	@GOOS=linux GOARCH=amd64 go build -ldflags="-s -w $(LDFLAGS)" -o $(BINARY_DIR)/$(BINARY_NAME)-linux-amd64
+	@tar -czf dist/$(BINARY_NAME)-linux-amd64.tar.gz -C $(BINARY_DIR) $(BINARY_NAME)-linux-amd64
+	@GOOS=windows GOARCH=amd64 go build -ldflags="-s -w $(LDFLAGS)" -o $(BINARY_DIR)/$(BINARY_NAME)-windows-amd64.exe
+	@zip -j dist/$(BINARY_NAME)-windows-amd64.zip $(BINARY_DIR)/$(BINARY_NAME)-windows-amd64.exe
+	@printf "$(GREEN)Distribution packages created in dist/$(NC)\n"
+
+# Show help
 help:
-	@echo "Usage: make [target]"
-	@echo ""
-	@echo "Targets:"
-	@echo "  build         Build the application"
-	@echo "  run           Build and run the application"
-	@echo "  test          Run tests"
-	@echo "  clean         Clean the project"
-	@echo "  format        Format the code"
-	@echo "  install-deps  Install dependencies using go mod"
-	@echo "  docker-build  Build Docker image"
-	@echo "  docker-run    Build and run Docker image"
-	@echo "  help          Show this help message"
-
-.PHONY: build run test clean format install-deps docker-build docker-run help
+	@echo "Available targets:"
+	@echo "  make              : Build and test the project"
+	@echo "  make build        : Build the binary"
+	@echo "  make clean        : Remove build artifacts"
+	@echo "  make test         : Run tests"
+	@echo "  make coverage     : Generate test coverage report"
+	@echo "  make docker-build : Build Docker image"
+	@echo "  make docker-run   : Run in Docker container"
+	@echo "  make fmt          : Format code"
+	@echo "  make lint         : Run linter"
+	@echo "  make install-deps : Install dependencies"
+	@echo "  make run          : Build and run the application"
+	@echo "  make install      : Install binary to GOPATH/bin"
+	@echo "  make release      : Create optimized release build"
+	@echo "  make dist         : Create distribution packages"
+	@echo "  make help         : Show this help message"
